@@ -1,0 +1,7 @@
+/data
+/model_resnet_imsize128_batchsize64
+data.zip
+.DS_Store data/train/.DS_Store data/train/train/.DS_Store
+.vscode
+__pycache__
+model-config_1/summaries
