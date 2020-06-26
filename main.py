@@ -7,6 +7,7 @@ import net_solver
 import model
 from data import Data
 from utils import *
+import pickle
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -21,17 +22,18 @@ flags.DEFINE_bool('use_tfrecord', True, help='whether to create and load data in
 
 if __name__ == "__main__":
     tf.reset_default_graph()
-    
+
     fnames = [f.name for f in os.scandir(FLAGS.training_data) if f.is_dir()]
     classes = {name: int(name) for name in fnames if name.isnumeric()}
     class_names = [c for c in sorted(classes.keys(), key=lambda x: classes[x])]
-    
     class_count = dict.fromkeys(class_names, 0)
+    for c in class_names:
+        class_count[c] = float(len(glob_re('.*\.(jpg|JPG).*', os.listdir(os.path.join(FLAGS.training_data, c)))))
+
     print('='*50)
     print('Training dataset summaries')
     print('='*50)
     for c in class_names:
-        class_count[c] = float(len(glob_re('.*\.(jpg|JPG).*', os.listdir(os.path.join(FLAGS.training_data, c)))))
         print('{:<15s}{:<15d}'.format(c, int(class_count[c])))
     print('-'*50)
     print('{:<15s}{:<15f}'.format('Summation', sum([class_count[c] for c in class_names])))
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     solver.setup_data(
         FLAGS.training_data, 
         augmentation=FLAGS.augmentation, 
-        se_tfrecord=FLAGS.use_tfrecord
+        use_tfrecord=FLAGS.use_tfrecord
     )
     images, labels = solver.get_data_source('train')
     net.set_data_source(images, labels)

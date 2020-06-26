@@ -15,7 +15,7 @@ import glob
 from sklearn.metrics import *
 
 class NetSolver:
-    def __init__(self, working_dir, batch_size=32, max_iter=1e5, val_iter=5e2, save_iter=5e3, log_iter=100, \
+    def __init__(self, working_dir, batch_size=32, max_iter=1e5, val_iter=5e3, save_iter=5e3, log_iter=100, \
                  learning_rate=0.0001, lr_start_decay=None, lr_decay_every=None, pretrained_resnet=None, \
                  colab_drive=None, label_to_index=None):
         self.working_dir = working_dir
@@ -177,7 +177,7 @@ class NetSolver:
         #with tf.device('/cpu:0'):
         data = Data(data_path, augmentation=augmentation, use_tfrecord=use_tfrecord, split_ratio=[0.8,0.1,0.1], batch_size=self.batch_size) # set up also image size, batch size, augmentation, split ratio if needed
         self.ds_train, self.train_n, self.ds_val, self.val_n, self.ds_test, self.test_n = data.get_data(self.label_to_index)
-        
+
         # to monitor tf datasets
         # self.stats_aggregator = tf.data.experimental.StatsAggregator()
         # options = tf.data.Options()
@@ -204,6 +204,7 @@ class NetSolver:
     def validate(self, src='val', num_batches=None):
         if src == 'val':
             num_batches_ = (self.val_n // self.batch_size) if num_batches is None else num_batches
+            print('num_batches: ', num_batches_)
         elif src == 'test': 
             num_batches_ = (self.test_n // self.batch_size) if num_batches is None else num_batches
         elif src == 'train':
@@ -219,7 +220,8 @@ class NetSolver:
                 try:
                     X, y = self.sess.run((self.images, self.labels))
                     sum_ones += np.sum(np.array(y,np.int32)==1)
-                except:
+                except Exception as ex:
+                    print(str(ex))
                     continue
                 labels = y if i==0 else np.concatenate((labels, y))
                 predictions = self.sess.run(self.net.cls, feed_dict={self.net.is_training:False, self.net.X:X}) if i==0  else \
