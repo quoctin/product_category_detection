@@ -11,10 +11,10 @@ import pickle
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('im_size', 128, help='image size (integer)')
+flags.DEFINE_integer('im_size', 224, help='image size (integer)')
 flags.DEFINE_integer('epoch', 100, help='number of epochs (integer)')
-flags.DEFINE_integer('batch_size', 64, help='number of images in a batch (integer)')
-flags.DEFINE_string('working_dir', 'model-config_1', help='working directory')
+flags.DEFINE_integer('batch_size', 32, help='number of images in a batch (integer)')
+flags.DEFINE_string('working_dir', 'model-config_2', help='working directory')
 flags.DEFINE_string('training_data', 'data/train/train', help='directory of training data')
 flags.DEFINE_string('test_data', 'data/test/test', help='directory of training data')
 flags.DEFINE_bool('augmentation', True, help='whether to use data augmentation during training')
@@ -73,20 +73,21 @@ if __name__ == "__main__":
     images, labels = solver.get_data_source('train')
     net.set_data_source(images, labels)
     net.build_model()
-    solver.setup_net(net)
+    solver.setup_net(net, ckpt_id=82325)
     solver.setup_summary()
     solver.train()
-    test_err, others = solver.validate(src='test')
-    index_to_label = {k:v for v,k in solver.label_to_index.items()}
+    
+    # test_err, others = solver.validate(src='test')
+    # index_to_label = {k:v for v,k in solver.label_to_index.items()}
 
-    print('{:<15s}{:<23f}'.format('Accuracy', 1. - test_err))
-    for i in range(net.num_class):
-        print('{:<15s}{:<15s}'.format('Metric', index_to_label[i]))
-        print('{:<15s}{:<15f}'.format('Support', others[3][i]))
-        print('{:<15s}{:<15f}'.format('Precision', others[0][i]))
-        print('{:<15s}{:<15f}'.format('Recall', others[1][i]))
-        print('{:<15s}{:<15f}'.format('F1', others[2][i]))
-        print('\n==\n')
+    # print('{:<15s}{:<23f}'.format('Accuracy', 1. - test_err))
+    # for i in range(net.num_class):
+    #     print('{:<15s}{:<15s}'.format('Metric', index_to_label[i]))
+    #     print('{:<15s}{:<15f}'.format('Support', others[3][i]))
+    #     print('{:<15s}{:<15f}'.format('Precision', others[0][i]))
+    #     print('{:<15s}{:<15f}'.format('Recall', others[1][i]))
+    #     print('{:<15s}{:<15f}'.format('F1', others[2][i]))
+    #     print('\n==\n')
 
     #solver.export_to_pb(os.path.join(FLAGS.working_dir, 'pb'))
 

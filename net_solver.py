@@ -145,8 +145,8 @@ class NetSolver:
             self.load_log()
             self.i = self.net.global_iter.eval(session=self.sess)
             if self.i >= self.lr_start_decay:
-                self.learning_rate /= 2**((self.i-self.lr_start_decay)//self.lr_decay_every)
-                self.learning_rate = min(1e-5, self.learning_rate)
+                self.learning_rate /= 2**(((self.i-self.lr_start_decay)//self.lr_decay_every) + 1)
+                self.learning_rate = max(1e-5, self.learning_rate)
         else:
             print('Initializing from scratch')
             self.sess.run(tf.global_variables_initializer())
@@ -175,7 +175,7 @@ class NetSolver:
 
     def setup_data(self, data_path, augmentation=False, use_tfrecord=True):
         #with tf.device('/cpu:0'):
-        data = Data(data_path, augmentation=augmentation, use_tfrecord=use_tfrecord, split_ratio=[0.8,0.1,0.1], batch_size=self.batch_size) # set up also image size, batch size, augmentation, split ratio if needed
+        data = Data(data_path, augmentation=augmentation, use_tfrecord=use_tfrecord, split_ratio=[0.9, 0.1, 0.0], batch_size=self.batch_size) # set up also image size, batch size, augmentation, split ratio if needed
         self.ds_train, self.train_n, self.ds_val, self.val_n, self.ds_test, self.test_n = data.get_data(self.label_to_index)
 
         # to monitor tf datasets
@@ -262,7 +262,7 @@ class NetSolver:
             if self.lr_start_decay is not None and \
                 self.i >= self.lr_start_decay and \
                     (self.i-self.lr_start_decay)%self.lr_decay_every == 0:
-                self.learning_rate = min(1e-5, self.learning_rate/2)
+                self.learning_rate = max(1e-5, self.learning_rate/2)
 
     def export_to_pb(self, export_path):
         if os.path.exists(export_path):
