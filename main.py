@@ -4,7 +4,7 @@ import tensorflow as tf
 tf.logging.set_verbosity(tf.logging.ERROR)
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 import net_solver 
-import model
+import model_frozen as model
 from data import Data
 from utils import *
 import pickle
@@ -12,9 +12,9 @@ import pickle
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('im_size', 224, help='image size (integer)')
-flags.DEFINE_integer('epoch', 100, help='number of epochs (integer)')
-flags.DEFINE_integer('batch_size', 32, help='number of images in a batch (integer)')
-flags.DEFINE_string('working_dir', 'model-config_2', help='working directory')
+flags.DEFINE_integer('epoch', 30, help='number of epochs (integer)')
+flags.DEFINE_integer('batch_size', 64, help='number of images in a batch (integer)')
+flags.DEFINE_string('working_dir', 'model-config_5', help='working directory')
 flags.DEFINE_string('training_data', 'data/train/train', help='directory of training data')
 flags.DEFINE_string('test_data', 'data/test/test', help='directory of training data')
 flags.DEFINE_bool('augmentation', True, help='whether to use data augmentation during training')
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     net = model.initialize({'is_training':False, 
                             'loss_weight':loss_weight, 
                             'use_focal_loss':True, 
-                            'use_os_loss':True,
+                            'use_os_loss':False,
                             'num_class':K})
 
     solver = net_solver.initialize({
@@ -59,9 +59,9 @@ if __name__ == "__main__":
         'label_to_index'        : classes,
         'max_iter'              : FLAGS.epoch * (N//FLAGS.batch_size),
         'save_iter'             : 5  * (N//FLAGS.batch_size), 
-        'lr_start_decay'        : 30 * (N//FLAGS.batch_size),
-        'lr_decay_every'        : 10 * (N//FLAGS.batch_size),
-        'learning_rate'         : 0.0001,
+        'lr_start_decay'        : 10 * (N//FLAGS.batch_size),
+        'lr_decay_every'        : 5 * (N//FLAGS.batch_size),
+        'learning_rate'         : 0.005,
         'pretrained_resnet'     : 'pretrained/resnet_v2_50_2017_04_14/resnet_v2_50.ckpt',
         'batch_size'            : FLAGS.batch_size
     })
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     images, labels = solver.get_data_source('train')
     net.set_data_source(images, labels)
     net.build_model()
-    solver.setup_net(net, ckpt_id=82325)
+    solver.setup_net(net)
     solver.setup_summary()
     solver.train()
     
@@ -89,6 +89,6 @@ if __name__ == "__main__":
     #     print('{:<15s}{:<15f}'.format('F1', others[2][i]))
     #     print('\n==\n')
 
-    #solver.export_to_pb(os.path.join(FLAGS.working_dir, 'pb'))
+    # solver.export_to_pb(os.path.join(FLAGS.working_dir, 'pb'))
 
 

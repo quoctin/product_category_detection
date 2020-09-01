@@ -14,9 +14,10 @@ def check_and_remove(paths):
         for p in tqdm(paths):
             try:
                 image_data = sess.run(image, feed_dict={path_input:p})
-                assert image_data.shape[2] == 3, 'Single-channel image is disallowed'
+                if image_data.shape[2] != 3:
+                    raise Exception()
                 ret.append(p)
-            except:
+            except Exception as e:
                 print('\n\nRemoving ', p)
                 os.remove(p)
     return ret

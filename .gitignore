@@ -5,3 +5,6 @@ data.zip
 .vscode
 __pycache__
 model-config_1/summaries
+**/*.csv
+**/*.pkl
+**/.DS_Store

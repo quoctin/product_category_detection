@@ -15,7 +15,7 @@ import glob
 from sklearn.metrics import *
 
 class NetSolver:
-    def __init__(self, working_dir, batch_size=32, max_iter=1e5, val_iter=5e3, save_iter=5e3, log_iter=100, \
+    def __init__(self, working_dir, batch_size=32, max_iter=1e5, val_iter=1e3, save_iter=5e3, log_iter=100, \
                  learning_rate=0.0001, lr_start_decay=None, lr_decay_every=None, pretrained_resnet=None, \
                  colab_drive=None, label_to_index=None):
         self.working_dir = working_dir
@@ -115,6 +115,7 @@ class NetSolver:
                     break
             else:
                 vars_to_restore.append(var)
+        print(vars_to_restore)
         init_fn = slim.assign_from_checkpoint_fn(self.pretrained_resnet, vars_to_restore,
             ignore_missing_vars=False)
         init_fn(self.sess)
@@ -144,7 +145,7 @@ class NetSolver:
             self.load_model(ckpt_id=ckpt_id)
             self.load_log()
             self.i = self.net.global_iter.eval(session=self.sess)
-            if self.i >= self.lr_start_decay:
+            if self.lr_start_decay is not None and self.i >= self.lr_start_decay:
                 self.learning_rate /= 2**(((self.i-self.lr_start_decay)//self.lr_decay_every) + 1)
                 self.learning_rate = max(1e-5, self.learning_rate)
         else:

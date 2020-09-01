@@ -12,6 +12,7 @@ import copy
 import glob
 from tqdm import tqdm
 import hashlib
+from collections import defaultdict
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -92,7 +93,6 @@ class Data:
         image = image/255.0
         if augmentation:
             image = self.augment_data(image)
-        #image = tf.image.resize(image, self.im_size)
         image = tf.clip_by_value(image, 0., 1.)
         return image
 
@@ -103,6 +103,8 @@ class Data:
         def rotate_(x):
             # Rotate 0, 90, 180, 270 degrees
             return tf.image.rot90(x, tf.random_uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
+        def center_crop_(x):
+            return tf.image.resize(tf.image.central_crop(x, 0.8), self.im_size)
         def flip_(x):
             x = tf.image.random_flip_left_right(x)
             x = tf.image.random_flip_up_down(x)
@@ -113,9 +115,10 @@ class Data:
             x = tf.image.random_brightness(x, 0.05)
             x = tf.image.random_contrast(x, 0.7, 1.3)
             return x
-        image = tf.cond(tf.random_uniform([], 0, 1) > 0.75, lambda: rotate_(image), lambda: image)
-        image = tf.cond(tf.random_uniform([], 0, 1) > 0.75, lambda: flip_(image), lambda: image)
-        image = tf.cond(tf.random_uniform([], 0, 1) > 0.75, lambda: color_(image), lambda: image)
+        image = tf.cond(tf.random_uniform([], 0, 1) > 0.95, lambda: rotate_(image), lambda: image)
+        image = tf.cond(tf.random_uniform([], 0, 1) > 0.95, lambda: flip_(image), lambda: image)
+        image = tf.cond(tf.random_uniform([], 0, 1) > 0.95, lambda: color_(image), lambda: image)
+        image = tf.cond(tf.random_uniform([], 0, 1) > 0.95, lambda: center_crop_(image), lambda: image)
         return image
 
     def convert_to_tf_example(self, image, label):
@@ -167,27 +170,44 @@ class Data:
         data = [b_train, b_val, b_test]
         tfrec_size = int(10**8 / (FLAGS.im_size*FLAGS.im_size*12))
         options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+
+        error_idx = defaultdict(set)
         for j,cat in enumerate(['train', 'val', 'test']):
-            for i,(file_path, label) in tqdm(enumerate(zip(data[j][0], data[j][1]))):
-                if i%tfrec_size == 0:
-                    # open new file writer every tfrec_size
-                    f = os.path.join(self.data_path+'_tfrecords', cat+str(i//tfrec_size)+'.tfrecords')
-                    writer = tf.python_io.TFRecordWriter(f, options)
-                image = Image.open(file_path)
-                image = np.array(image, np.float32)
-                if image.ndim < 3:
-                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-                if image.shape[2] > 3:
-                    image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
-                #image = self.smart_crop_np(image)
-                image = cv2.resize(image, tuple(self.im_size))
-                example = self.convert_to_tf_example(image, np.int64(label))
-                writer.write(example.SerializeToString())
-                if (i+1)%tfrec_size == 0:
-                    writer.close()
-                    writer = None
+            for i,(file_path,label) in tqdm(enumerate(zip(data[j][0], data[j][1]))):
+                try:
+                    if i%tfrec_size == 0:
+                        # open new file writer every tfrec_size
+                        f = os.path.join(self.data_path+'_tfrecords', cat+str(i//tfrec_size)+'.tfrecords')
+                        writer = tf.python_io.TFRecordWriter(f, options)
+                    image = Image.open(file_path)
+                    image = np.array(image, np.float32)
+                    if image.shape[2] > 3:
+                        print(file_path, '{} channels'.format(image.shape[2]))
+                        image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+
+                    #image = self.smart_crop_np(image)
+                    image = cv2.resize(image, tuple(self.im_size))
+                    example = self.convert_to_tf_example(image, np.int64(label))
+
+                    if image.shape[2] != 3: 
+                        #print(file_path, '{} dims, {} channels'.format(image.ndim, image.shape[2]))
+                        raise Exception(file_path + '{} dims, {} channels'.format(image.ndim, image.shape[2]))
+
+                    writer.write(example.SerializeToString())
+                    if (i+1)%tfrec_size == 0:
+                        writer.close()
+                        writer = None
+
+                except Exception as e:
+                    error_idx[cat].add(i)
+                    print(file_path, ' error: ', str(e))
+                    if (i+1)%tfrec_size == 0:
+                        writer.close()
+                        writer = None
+                    continue
             if writer is not None:
                 writer.close()
+
     
     def extract_and_preprocess_tfrecord(self, serialized_example):
         features = {
@@ -251,7 +271,7 @@ class Data:
             record_files = glob.glob(os.path.join(self.data_path + '_tfrecords', 'train*.tfrecords'))
             ds_train = tf.data.TFRecordDataset(record_files, compression_type=compression).repeat()
             ds_train = ds_train.map(self.extract_and_preprocess_tfrecord, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-            ds_train = ds_train.shuffle(buffer_size=1000)
+            ds_train = ds_train.shuffle(buffer_size=img_count//10)
             ds_train = ds_train.batch(self.batch_size)
             ds_train = ds_train.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
             
